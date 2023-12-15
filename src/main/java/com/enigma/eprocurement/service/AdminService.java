@@ -6,4 +6,5 @@ import com.enigma.eprocurement.entity.Admin;
 public interface AdminService {
     AdminResponse create(Admin admin);
 
+    AdminResponse getById(String id);
 }
