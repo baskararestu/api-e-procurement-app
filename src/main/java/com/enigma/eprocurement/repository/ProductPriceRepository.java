@@ -10,6 +10,6 @@ import java.util.Optional;
 public interface ProductPriceRepository extends JpaRepository<ProductPrice, String> {
     //query method
     Optional<ProductPrice> findByProduct_IdAndIsActive(String s,Boolean active);
-//    boolean existsByVendorId(String vendor);
+//    boolean existsByVendorId(String vendorId);
 
 }

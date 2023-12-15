@@ -14,11 +14,18 @@ import com.enigma.eprocurement.service.CategoryService;
 import com.enigma.eprocurement.service.ProductPriceService;
 import com.enigma.eprocurement.service.ProductService;
 import com.enigma.eprocurement.service.VendorService;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.Predicate;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -32,10 +39,6 @@ public class ProductServiceImpl implements ProductService {
     private final ProductPriceService productPriceService;
     private final CategoryService categoryService;
 
-    @Override
-    public Product create(Product product) {
-        return productRespository.save(product);
-    }
 
     @Override
     public List<ProductResponse> getAll() {
@@ -44,10 +47,12 @@ public class ProductServiceImpl implements ProductService {
                 .productId(product.getId())
                 .productName(product.getName())
                 .priceList(product.getProductPrices())
+                .productCategory(product.getCategory().getName())
                 .build()).collect(Collectors.toList());
     }
 
 
+    @Transactional(rollbackOn = Exception.class)
     @Override
     public void delete(String id) {
         productRespository.deleteById(id);
@@ -56,7 +61,6 @@ public class ProductServiceImpl implements ProductService {
     @Transactional(rollbackOn = Exception.class)
     @Override
     public ProductResponse createProductCategoryAndProductPrice(ProductRequest productRequest) {
-
         VendorResponse vendorResponse = vendorService.getById(productRequest.getVendorId().getId());
         Category category = Category.builder()
                 .name(productRequest.getCategory())
@@ -97,6 +101,55 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public Page<ProductResponse> getAllByNameOrPrice(String name, Long maxPrice, Integer page, Integer size) {
-        return null;
+        //specification menentukan kriteria pencarian,disini kriteria pencarian tindakan dengan root,root yang dimaksud adalah entity product
+        Specification<Product> specification = (root, query, criteriaBuilder) -> {
+            Join<Product, ProductPrice> productPrices = root.join("productPrices");
+            //Prediction digunakan untuk mengunakan LIKE dimana nanti kita akan menggunakan kondisi pencarian parameter
+            //disini kita akan mencari nama produk atau harga yang sama atau harga dibawahnya, makannya menggunakan lessthanorequal
+            List<Predicate> predicates = new ArrayList<>();
+            if (name != null) {
+                predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), "%" + name.toLowerCase() + "%"));
+            }
+            if (maxPrice != null) {
+                predicates.add(criteriaBuilder.lessThanOrEqualTo(productPrices.get("price"), maxPrice));
+            }
+            //kode return mengembalikan query dimana pada dasarnya kita membangun klausa where yang sudah ditentukan dari predicate atau kriteria
+            return query.where(predicates.toArray(new Predicate[]{})).getRestriction();
+        };
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Product> products = productRespository.findAll(specification, pageable);
+        //ini digunakan untuk menyimpan response product yang baru
+        List<ProductResponse> productResponses = new ArrayList<>();
+        for (Product product : products.getContent()) {
+            //digunakan untuk mengiterasi data product yang disimpan dalam objek
+            Optional<ProductPrice> productPrice = product.getProductPrices()
+                    .stream()
+                    .filter(ProductPrice::isActive).findFirst();//optional ini untk mencari harga yang aktif
+            if (productPrice.isEmpty())//kondisi ini digunakan untuk memerika pakah productPricenya kosong atau tidak, jika tidak maka di skip
+                continue;
+
+            Vendor vendor = productPrice.get().getVendor();//ini digunakan untuk jika harga product yang aktif ditemukan distore
+            productResponses.add(toProductResponse(product, productPrice.get(), vendor));
+        }
+        return new PageImpl<>(productResponses, pageable, products.getTotalElements());
+    }
+
+    private static ProductResponse toProductResponse
+            (Product product, ProductPrice productPrice, Vendor vendor) {
+        return ProductResponse.builder()
+                .productId(product.getId())
+                .productName(product.getName())
+                .productCategory(product.getCategory().getName())
+                .stock(productPrice.getStock())
+                .price(productPrice.getPrice())
+                .stock(productPrice.getStock())
+                .vendor(VendorResponse.builder()
+                        .id(vendor.getId())
+                        .noSiup(vendor.getNoSiup())
+                        .vendorName(vendor.getName())
+                        .mobilPhone(vendor.getMobilePhone())
+                        .address(vendor.getAddress())
+                        .build())
+                .build();
     }
 }

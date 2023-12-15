@@ -8,8 +8,6 @@ import org.springframework.data.domain.Page;
 import java.util.List;
 
 public interface ProductService {
-    Product create(Product product);
-
     List<ProductResponse> getAll();
 
     void delete(String id);
