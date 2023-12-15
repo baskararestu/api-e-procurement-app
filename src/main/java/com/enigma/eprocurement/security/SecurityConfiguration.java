@@ -19,7 +19,6 @@ import static org.springframework.security.config.http.SessionCreationPolicy.STA
 @RequiredArgsConstructor
 @EnableMethodSecurity
 public class SecurityConfiguration {
-    // localhost:3000/api/v1/**
     private final AuthTokenFilter authTokenFilter;
     private static final String[] WHITE_LIST_URL = {"/api/v1/auth/**"};
     @Bean
