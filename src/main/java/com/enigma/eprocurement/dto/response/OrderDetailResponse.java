@@ -9,10 +9,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder(toBuilder = true)
-public class VendorResponse {
-    private String id;
-    private String noSiup;
-    private String vendorName;
-    private String address;
-    private String mobilPhone;
+public class OrderDetailResponse {
+    private String orderDetailId;
+    private ProductResponse product;
+    private Integer quantity;
 }

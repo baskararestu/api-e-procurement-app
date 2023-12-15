@@ -5,4 +5,6 @@ import com.enigma.eprocurement.entity.Vendor;
 
 public interface VendorService {
     VendorResponse create(Vendor vendor);
+
+    VendorResponse getById(String id);
 }

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class AdminServiceImpl implements AdminService {
     private final AdminRepository adminRepository;
+
     @Override
     public AdminResponse create(Admin admin) {
         adminRepository.saveAndFlush(admin);
@@ -19,5 +20,19 @@ public class AdminServiceImpl implements AdminService {
                 .email(admin.getEmail())
                 .phoneNumber(admin.getPhoneNumber())
                 .build();
+    }
+
+    @Override
+    public AdminResponse getById(String id) {
+        Admin admin = adminRepository.findById(id).orElse(null);
+        if (admin != null) {
+            return AdminResponse.builder()
+                    .id(admin.getId())
+                    .name(admin.getName())
+                    .email(admin.getEmail())
+                    .phoneNumber(admin.getPhoneNumber())
+                    .build();
+        }
+        return null;
     }
 }
