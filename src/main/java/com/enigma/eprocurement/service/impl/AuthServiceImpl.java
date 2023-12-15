@@ -4,15 +4,13 @@ import com.enigma.eprocurement.constant.ERole;
 import com.enigma.eprocurement.dto.request.AuthRequest;
 import com.enigma.eprocurement.dto.response.LoginResponse;
 import com.enigma.eprocurement.dto.response.RegisterResponse;
-import com.enigma.eprocurement.entity.Admin;
-import com.enigma.eprocurement.entity.AppUser;
-import com.enigma.eprocurement.entity.Role;
-import com.enigma.eprocurement.entity.UserCredential;
+import com.enigma.eprocurement.entity.*;
 import com.enigma.eprocurement.repository.UserCredentialRepository;
 import com.enigma.eprocurement.security.JwtUtil;
 import com.enigma.eprocurement.service.AdminService;
 import com.enigma.eprocurement.service.AuthService;
 import com.enigma.eprocurement.service.RoleService;
+import com.enigma.eprocurement.service.VendorService;
 import com.enigma.eprocurement.util.ValidationUtil;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -31,13 +29,13 @@ public class AuthServiceImpl implements AuthService {
     private final UserCredentialRepository userCredentialRepository;
     private final PasswordEncoder passwordEncoder;
     private final AdminService adminService;
+    private final VendorService vendorService;
     private final RoleService roleService;
     private final JwtUtil jwtUtil;
     private final ValidationUtil validationUtil;
     private final AuthenticationManager authenticationManager;
 
 
-    @Transactional(rollbackOn = Exception.class)
     @Override
     public LoginResponse login(AuthRequest authRequest) {
         //tempat untuk logic login
@@ -59,6 +57,7 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
+    @Transactional(rollbackOn = Exception.class)
     @Override
     public RegisterResponse registerAdmin(AuthRequest authRequest) {
         try {
@@ -66,7 +65,7 @@ public class AuthServiceImpl implements AuthService {
             Role role = Role.builder()
                     .roleName(ERole.ROLE_ADMIN)
                     .build();
-            roleService.getOrSave(role);
+            role = roleService.getOrSave(role);
             //TODO 2: set credential
             UserCredential userCredential = UserCredential.builder()
                     .username(authRequest.getUsername())
@@ -89,6 +88,38 @@ public class AuthServiceImpl implements AuthService {
                     .build();
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "user admin already exist");
+        }
+    }
+
+    @Transactional(rollbackOn = Exception.class)
+    @Override
+    public RegisterResponse registerVendor(AuthRequest authRequest) {
+        try {
+            Role role = Role.builder()
+                    .roleName(ERole.ROLE_VENDOR)
+                    .build();
+            role = roleService.getOrSave(role);
+            UserCredential userCredential = UserCredential.builder()
+                    .username(authRequest.getUsername())
+                    .password(passwordEncoder.encode(authRequest.getPassword()))
+                    .role(role)
+                    .build();
+            userCredentialRepository.saveAndFlush(userCredential);
+            Vendor vendor = Vendor.builder()
+                    .userCredential(userCredential)
+                    .noSiup(authRequest.getNoSiup())
+                    .name(authRequest.getName())
+                    .address(authRequest.getAddress())
+                    .mobilePhone(authRequest.getMobilePhone())
+                    .build();
+            vendorService.create(vendor);
+            return RegisterResponse.builder()
+                    .username(userCredential.getUsername())
+                    .name(authRequest.getName())
+                    .role(userCredential.getRole().getRoleName().toString())
+                    .build();
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Vendor already exist");
         }
     }
 }
