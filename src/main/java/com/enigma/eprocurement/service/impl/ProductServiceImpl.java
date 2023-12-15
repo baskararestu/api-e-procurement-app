@@ -23,7 +23,9 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -132,6 +134,70 @@ public class ProductServiceImpl implements ProductService {
             productResponses.add(toProductResponse(product, productPrice.get(), vendor));
         }
         return new PageImpl<>(productResponses, pageable, products.getTotalElements());
+    }
+
+    @Transactional(rollbackOn = Exception.class)
+    @Override
+    public ProductResponse updateProductPrice(String productId, ProductRequest productRequest) {
+        if (!isUpdateNeeded(productId, productRequest)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No changes in the update request");
+        }
+        deactivatePreviousActivePrices(productId, productRequest.getVendorId().getId());
+        VendorResponse vendorResponse = vendorService.getById(productRequest.getVendorId().getId());
+        Category category = Category.builder()
+                .name(productRequest.getCategory())
+                .build();
+        category = categoryService.getOrSave(category);
+        Product product = Product.builder()
+                .name(productRequest.getProductName())
+                .category(category)
+                .build();
+        productRespository.saveAndFlush(product);
+        ProductPrice productPrice = ProductPrice.builder()
+                .price(productRequest.getPrice())
+                .stock(productRequest.getStock())
+                .isActive(true)
+                .product(product)
+                .vendor(Vendor.builder()
+                        .id(vendorResponse.getId())
+                        .build())
+                .build();
+        productPriceService.create(productPrice);
+        return ProductResponse.builder()
+                .productId(product.getId())
+                .productName(product.getName())
+                .productCategory(product.getCategory().getName())
+                .stock(productRequest.getStock())
+                .price(productPrice.getPrice())
+                .stock(productPrice.getStock())
+                .vendor(VendorResponse.builder()
+                        .id(vendorResponse.getId())
+                        .noSiup(vendorResponse.getNoSiup())
+                        .vendorName(vendorResponse.getVendorName())
+                        .mobilPhone(vendorResponse.getMobilPhone())
+                        .address(vendorResponse.getAddress())
+                        .build())
+                .build();
+    }
+
+    private void deactivatePreviousActivePrices(String productId, String vendorId) {
+        productPriceRepository.findByProduct_IdAndVendorIdAndIsActive(productId, vendorId, true)
+                .ifPresent(previousPrice -> {
+                    previousPrice.setActive(false);
+                    productPriceRepository.saveAndFlush(previousPrice);
+                });
+    }
+
+    private boolean isUpdateNeeded(String productId, ProductRequest productRequest) {
+        Optional<Product> existingProduct = productRespository.findById(productId);
+
+        Optional<ProductPrice> existingActivePrice = productPriceRepository.findByProduct_IdAndVendorIdAndIsActive(productId, productRequest.getVendorId().getId(), true);
+
+        return existingProduct.isPresent() &&
+                existingActivePrice.isPresent() &&
+                (!existingProduct.get().getName().equals(productRequest.getProductName()) ||
+                        !existingActivePrice.get().getPrice().equals(productRequest.getPrice()) ||
+                        !existingActivePrice.get().getStock().equals(productRequest.getStock()));
     }
 
     private static ProductResponse toProductResponse

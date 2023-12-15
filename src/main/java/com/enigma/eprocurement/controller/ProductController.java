@@ -58,5 +58,17 @@ public class ProductController {
                         .pagingResponse(pagingResponse)
                         .build());
     }
-
+    @PutMapping("/{productId}")
+    @PreAuthorize("hasRole('ROLE_VENDOR')")
+    public ResponseEntity<?> updateProductPrice(
+            @PathVariable String productId,
+            @RequestBody ProductRequest productRequest
+    ) {
+        ProductResponse updatedProduct = productService.updateProductPrice(productId, productRequest);
+        return ResponseEntity.ok(CommonResponse.<ProductResponse>builder()
+                .statusCode(HttpStatus.OK.value())
+                .message("Product price updated successfully")
+                .data(updatedProduct)
+                .build());
+    }
 }
