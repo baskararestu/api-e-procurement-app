@@ -15,5 +15,4 @@ public class VendorResponse {
     private String vendorName;
     private String address;
     private String mobilPhone;
-    private String email;
 }
