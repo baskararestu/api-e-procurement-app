@@ -24,8 +24,8 @@ public class ProductPriceServiceImpl implements ProductPriceService {
     }
 
     @Override
-    public ProductPrice findProductPriceIsActive(String productId, Boolean active) {
-        return productPriceRepository.findByProduct_IdAndIsActive(productId,active)
+    public ProductPrice findProductPriceIsActive(String productId,String vendorId, Boolean active) {
+        return productPriceRepository.findByProduct_IdAndVendorIdAndIsActive(productId,vendorId,active)
                 .orElseThrow(()-> new ResponseStatusException(HttpStatus.NOT_FOUND,
                 "product not found"));
     }
