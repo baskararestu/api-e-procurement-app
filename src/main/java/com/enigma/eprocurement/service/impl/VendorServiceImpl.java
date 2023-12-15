@@ -22,4 +22,19 @@ public class VendorServiceImpl implements VendorService {
                 .mobilPhone(vendor.getMobilePhone())
                 .build();
     }
+
+    @Override
+    public VendorResponse getById(String id) {
+        Vendor vendor =vendorRepository.findById(id).orElse(null);
+        if (vendor != null) {
+            return VendorResponse.builder()
+                    .id(vendor.getId())
+                    .noSiup(vendor.getNoSiup())
+                    .vendorName(vendor.getName())
+                    .address(vendor.getAddress())
+                    .mobilPhone(vendor.getMobilePhone())
+                    .build();
+        }
+        return null;
+    }
 }

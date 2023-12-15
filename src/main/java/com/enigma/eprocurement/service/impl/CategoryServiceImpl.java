@@ -14,7 +14,7 @@ public class CategoryServiceImpl implements CategoryService {
 private final CategoryRepository categoryRepository;
     @Override
     public Category getOrSave(Category category) {
-        Optional<Category> existingCategory = categoryRepository.findById(category.getId());
+        Optional<Category> existingCategory = categoryRepository.findByName(category.getName());
 
         return existingCategory.orElseGet(() -> categoryRepository.save(category));
     }
