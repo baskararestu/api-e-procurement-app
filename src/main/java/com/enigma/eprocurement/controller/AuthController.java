@@ -3,6 +3,7 @@ package com.enigma.eprocurement.controller;
 import com.enigma.eprocurement.constant.AppPath;
 import com.enigma.eprocurement.dto.request.AuthRequest;
 import com.enigma.eprocurement.dto.response.CommonResponse;
+import com.enigma.eprocurement.dto.response.LoginResponse;
 import com.enigma.eprocurement.dto.response.RegisterResponse;
 import com.enigma.eprocurement.service.AuthService;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,16 @@ public class AuthController {
                         .statusCode(HttpStatus.CREATED.value())
                         .message("Successfully create admin account")
                         .data(registerResponse)
+                        .build());
+    }
+    @PostMapping("/login")
+    public ResponseEntity loginUser(@RequestBody AuthRequest authRequest) {
+        LoginResponse loginResponse = authService.login(authRequest);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(CommonResponse.builder()
+                        .statusCode(HttpStatus.OK.value())
+                        .message("Successfully login into app")
+                        .data(loginResponse)
                         .build());
     }
 }
