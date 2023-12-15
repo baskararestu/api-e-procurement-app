@@ -24,4 +24,8 @@ public class Vendor {
     private String address;
     @Column(name = "mobile_phone", unique = true, nullable = false, length = 30)
     private String mobilePhone;
+
+    @OneToOne
+    @JoinColumn(name = "user_credential_id")
+    private UserCredential userCredential;
 }
