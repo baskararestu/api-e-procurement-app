@@ -1,6 +1,6 @@
 package com.enigma.eprocurement.entity;
 
-import com.enigma.shopeymart.constant.ERole;
+import com.enigma.eprocurement.constant.ERole;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

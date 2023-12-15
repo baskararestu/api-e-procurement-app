@@ -23,12 +23,11 @@ public class ProductPrice {
     private boolean isActive;
     @Column(name = "price", columnDefinition = "bigint check(price>0)")
     private Long price;
-
+    @ManyToOne
+    @JoinColumn(name = "vendor_id")
+    private Vendor vendor;
     @ManyToOne
     @JoinColumn(name = "product_id")
-    //melakukan stop pemanggilan objek product menghindari stackoverflow
-    //karena kita manggil product dan perlu product price sehingga
-    //sehingga product dalam product price tidak perlu dipanggil
     @JsonBackReference
     private Product product;
 }
