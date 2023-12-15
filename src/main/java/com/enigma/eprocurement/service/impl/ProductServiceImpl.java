@@ -7,23 +7,18 @@ import com.enigma.eprocurement.entity.Category;
 import com.enigma.eprocurement.entity.Product;
 import com.enigma.eprocurement.entity.ProductPrice;
 import com.enigma.eprocurement.entity.Vendor;
+import com.enigma.eprocurement.exeception.ProductAlreadyExistsException;
+import com.enigma.eprocurement.repository.ProductPriceRepository;
 import com.enigma.eprocurement.repository.ProductRespository;
 import com.enigma.eprocurement.service.CategoryService;
 import com.enigma.eprocurement.service.ProductPriceService;
 import com.enigma.eprocurement.service.ProductService;
 import com.enigma.eprocurement.service.VendorService;
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.Predicate;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -32,6 +27,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ProductServiceImpl implements ProductService {
     private final ProductRespository productRespository;
+    private final ProductPriceRepository productPriceRepository;
     private final VendorService vendorService;
     private final ProductPriceService productPriceService;
     private final CategoryService categoryService;
@@ -60,8 +56,8 @@ public class ProductServiceImpl implements ProductService {
     @Transactional(rollbackOn = Exception.class)
     @Override
     public ProductResponse createProductCategoryAndProductPrice(ProductRequest productRequest) {
+
         VendorResponse vendorResponse = vendorService.getById(productRequest.getVendorId().getId());
-//        Vendor vendor = new Vendor();
         Category category = Category.builder()
                 .name(productRequest.getCategory())
                 .build();
@@ -101,6 +97,6 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public Page<ProductResponse> getAllByNameOrPrice(String name, Long maxPrice, Integer page, Integer size) {
-    return null;
+        return null;
     }
 }
