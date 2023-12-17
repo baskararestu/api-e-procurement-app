@@ -6,7 +6,9 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
+
 @Repository
 public interface ProductRespository extends JpaRepository<Product, String>, JpaSpecificationExecutor<Product> {
-//    boolean existsByNameAndCategory(String name,String category);
+    Optional<Product> findByNameAndCategory_Name(String productName, String category);
 }

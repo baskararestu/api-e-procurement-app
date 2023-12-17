@@ -41,7 +41,6 @@ public class ProductServiceImpl implements ProductService {
     private final ProductPriceService productPriceService;
     private final CategoryService categoryService;
 
-
     @Override
     public List<ProductResponse> getAll() {
         List<Product> products = productRespository.findAll();
@@ -60,10 +59,32 @@ public class ProductServiceImpl implements ProductService {
         productRespository.deleteById(id);
     }
 
+    @Override
+    public ProductResponse getById(String id) {
+        Product product = productRespository.findById(id).orElse(null);
+        if (product != null) {
+            return ProductResponse.builder()
+                    .productId(product.getId())
+                    .productName(product.getName())
+                    .priceList(product.getProductPrices())
+                    .productCategory(product.getCategory().getName())
+                    .build();
+        }
+        return null;
+    }
+
     @Transactional(rollbackOn = Exception.class)
     @Override
     public ProductResponse createProductCategoryAndProductPrice(ProductRequest productRequest) {
         VendorResponse vendorResponse = vendorService.getById(productRequest.getVendorId().getId());
+        boolean getNameAndCategoryProduct =
+                getByNameAndCategory(productRequest.getProductName(),
+                        productRequest.getCategory());
+
+        if (getNameAndCategoryProduct) {
+            throw new ProductAlreadyExistsException("Product with the same name and category already exists");
+        }
+
         Category category = Category.builder()
                 .name(productRequest.getCategory())
                 .build();
@@ -178,6 +199,12 @@ public class ProductServiceImpl implements ProductService {
                         .address(vendorResponse.getAddress())
                         .build())
                 .build();
+    }
+
+    @Override
+    public boolean getByNameAndCategory(String productName, String productCategory) {
+        Optional<Product> product = productRespository.findByNameAndCategory_Name(productName, productCategory);
+        return product.isPresent();
     }
 
     private void deactivatePreviousActivePrices(String productId, String vendorId) {

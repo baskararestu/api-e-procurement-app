@@ -11,6 +11,8 @@ public interface ProductService {
     List<ProductResponse> getAll();
 
     void delete(String id);
+    ProductResponse getById(String id);
+    boolean getByNameAndCategory(String productName,String productCategory);
 
     ProductResponse createProductCategoryAndProductPrice(ProductRequest productRequest);
     Page<ProductResponse> getAllByNameOrPrice(String name, Long maxPrice, Integer page, Integer size);

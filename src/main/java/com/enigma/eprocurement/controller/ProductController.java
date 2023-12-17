@@ -5,6 +5,7 @@ import com.enigma.eprocurement.dto.request.ProductRequest;
 import com.enigma.eprocurement.dto.response.CommonResponse;
 import com.enigma.eprocurement.dto.response.PagingResponse;
 import com.enigma.eprocurement.dto.response.ProductResponse;
+import com.enigma.eprocurement.exeception.ProductAlreadyExistsException;
 import com.enigma.eprocurement.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -24,13 +25,22 @@ public class ProductController {
     @PostMapping
     @PreAuthorize("hasRole('ROLE_VENDOR')")
     public ResponseEntity<?> createProduct(@RequestBody ProductRequest productRequest) {
-        ProductResponse productResponse = productService.createProductCategoryAndProductPrice(productRequest);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(CommonResponse.<ProductResponse>builder()
-                        .statusCode(HttpStatus.CREATED.value())
-                        .message("Successfully created new product")
-                        .data(productResponse)
-                        .build());
+        try {
+            ProductResponse productResponse = productService.createProductCategoryAndProductPrice(productRequest);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(CommonResponse.builder()
+                            .statusCode(HttpStatus.CREATED.value())
+                            .message("Successfully created new product")
+                            .data(productResponse)
+                            .build());
+        } catch (ProductAlreadyExistsException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(CommonResponse.builder()
+                            .statusCode(HttpStatus.CREATED.value())
+                            .message("Product with the same name and category already exists")
+                            .data(null)
+                            .build());
+        }
     }
 
     @GetMapping
@@ -51,13 +61,15 @@ public class ProductController {
                 .totalPage(productResponses.getTotalPages())
                 .size(size)
                 .build();
-        return ResponseEntity.status(HttpStatus.CREATED)
+        return ResponseEntity.status(HttpStatus.OK)
                 .body(CommonResponse.builder()
-                        .statusCode(HttpStatus.CREATED.value())
+                        .statusCode(HttpStatus.OK.value())
+                        .message("Successfully getting data")
                         .data(productResponses.getContent())
                         .pagingResponse(pagingResponse)
                         .build());
     }
+
     @PutMapping("/{productId}")
     @PreAuthorize("hasRole('ROLE_VENDOR')")
     public ResponseEntity<?> updateProductPrice(
@@ -65,7 +77,7 @@ public class ProductController {
             @RequestBody ProductRequest productRequest
     ) {
         ProductResponse updatedProduct = productService.updateProductPrice(productId, productRequest);
-        return ResponseEntity.ok(CommonResponse.<ProductResponse>builder()
+        return ResponseEntity.ok(CommonResponse.builder()
                 .statusCode(HttpStatus.OK.value())
                 .message("Product price updated successfully")
                 .data(updatedProduct)
