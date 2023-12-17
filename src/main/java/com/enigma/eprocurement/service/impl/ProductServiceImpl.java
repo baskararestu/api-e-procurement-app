@@ -85,6 +85,10 @@ public class ProductServiceImpl implements ProductService {
             throw new ProductAlreadyExistsException("Product with the same name and category already exists");
         }
 
+        return createOrUpdateProduct(productRequest, vendorResponse);
+    }
+
+    private ProductResponse createOrUpdateProduct(ProductRequest productRequest, VendorResponse vendorResponse) {
         Category category = Category.builder()
                 .name(productRequest.getCategory())
                 .build();
@@ -161,44 +165,11 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public ProductResponse updateProductPrice(String productId, ProductRequest productRequest) {
         if (!isUpdateNeeded(productId, productRequest)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No changes in the update request");
+            return null;
         }
         deactivatePreviousActivePrices(productId, productRequest.getVendorId().getId());
         VendorResponse vendorResponse = vendorService.getById(productRequest.getVendorId().getId());
-        Category category = Category.builder()
-                .name(productRequest.getCategory())
-                .build();
-        category = categoryService.getOrSave(category);
-        Product product = Product.builder()
-                .name(productRequest.getProductName())
-                .category(category)
-                .build();
-        productRespository.saveAndFlush(product);
-        ProductPrice productPrice = ProductPrice.builder()
-                .price(productRequest.getPrice())
-                .stock(productRequest.getStock())
-                .isActive(true)
-                .product(product)
-                .vendor(Vendor.builder()
-                        .id(vendorResponse.getId())
-                        .build())
-                .build();
-        productPriceService.create(productPrice);
-        return ProductResponse.builder()
-                .productId(product.getId())
-                .productName(product.getName())
-                .productCategory(product.getCategory().getName())
-                .stock(productRequest.getStock())
-                .price(productPrice.getPrice())
-                .stock(productPrice.getStock())
-                .vendor(VendorResponse.builder()
-                        .id(vendorResponse.getId())
-                        .noSiup(vendorResponse.getNoSiup())
-                        .vendorName(vendorResponse.getVendorName())
-                        .mobilPhone(vendorResponse.getMobilPhone())
-                        .address(vendorResponse.getAddress())
-                        .build())
-                .build();
+        return createOrUpdateProduct(productRequest, vendorResponse);
     }
 
     @Override

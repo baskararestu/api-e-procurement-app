@@ -3,6 +3,7 @@ package com.enigma.eprocurement.controller;
 import com.enigma.eprocurement.constant.AppPath;
 import com.enigma.eprocurement.dto.request.ProductRequest;
 import com.enigma.eprocurement.dto.response.CommonResponse;
+import com.enigma.eprocurement.dto.response.DefaultResponse;
 import com.enigma.eprocurement.dto.response.PagingResponse;
 import com.enigma.eprocurement.dto.response.ProductResponse;
 import com.enigma.eprocurement.exeception.ProductAlreadyExistsException;
@@ -28,15 +29,15 @@ public class ProductController {
         try {
             ProductResponse productResponse = productService.createProductCategoryAndProductPrice(productRequest);
             return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(CommonResponse.builder()
+                    .body(DefaultResponse.builder()
                             .statusCode(HttpStatus.CREATED.value())
                             .message("Successfully created new product")
                             .data(productResponse)
                             .build());
         } catch (ProductAlreadyExistsException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(CommonResponse.builder()
-                            .statusCode(HttpStatus.CREATED.value())
+                    .body(DefaultResponse.builder()
+                            .statusCode(HttpStatus.CONFLIC.value())
                             .message("Product with the same name and category already exists")
                             .data(null)
                             .build());
@@ -77,7 +78,15 @@ public class ProductController {
             @RequestBody ProductRequest productRequest
     ) {
         ProductResponse updatedProduct = productService.updateProductPrice(productId, productRequest);
-        return ResponseEntity.ok(CommonResponse.builder()
+        if (updatedProduct == null) {
+            return ResponseEntity.status(HttpStatus.OK)
+                    .body(DefaultResponse.builder()
+                            .statusCode(HttpStatus.OK.value())
+                            .message("No changes in the update request")
+                            .data(null)
+                            .build());
+        }
+        return ResponseEntity.ok(DefaultResponse.builder()
                 .statusCode(HttpStatus.OK.value())
                 .message("Product price updated successfully")
                 .data(updatedProduct)
