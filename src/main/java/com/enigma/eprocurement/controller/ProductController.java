@@ -37,7 +37,7 @@ public class ProductController {
         } catch (ProductAlreadyExistsException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(DefaultResponse.builder()
-                            .statusCode(HttpStatus.CONFLIC.value())
+                            .statusCode(HttpStatus.CONFLICT.value())
                             .message("Product with the same name and category already exists")
                             .data(null)
                             .build());
