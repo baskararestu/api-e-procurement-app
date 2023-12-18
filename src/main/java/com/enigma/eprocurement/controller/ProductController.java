@@ -77,7 +77,7 @@ public class ProductController {
             @PathVariable String productId,
             @RequestBody ProductRequest productRequest
     ) {
-        ProductResponse updatedProduct = productService.updateProductPrice(productId, productRequest);
+        ProductResponse updatedProduct = productService.updateProduct(productId, productRequest);
         if (updatedProduct == null) {
             return ResponseEntity.status(HttpStatus.OK)
                     .body(DefaultResponse.builder()

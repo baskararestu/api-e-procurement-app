@@ -95,6 +95,7 @@ public class ProductServiceImpl implements ProductService {
         category = categoryService.getOrSave(category);
 
         Product product = Product.builder()
+                .id(productRequest.getProductId())
                 .name(productRequest.getProductName())
                 .category(category)
                 .build();
@@ -128,11 +129,8 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public Page<ProductResponse> getAllByNameOrPrice(String name, Long maxPrice, Integer page, Integer size) {
-        //specification menentukan kriteria pencarian,disini kriteria pencarian tindakan dengan root,root yang dimaksud adalah entity product
         Specification<Product> specification = (root, query, criteriaBuilder) -> {
             Join<Product, ProductPrice> productPrices = root.join("productPrices");
-            //Prediction digunakan untuk mengunakan LIKE dimana nanti kita akan menggunakan kondisi pencarian parameter
-            //disini kita akan mencari nama produk atau harga yang sama atau harga dibawahnya, makannya menggunakan lessthanorequal
             List<Predicate> predicates = new ArrayList<>();
             if (name != null) {
                 predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), "%" + name.toLowerCase() + "%"));
@@ -145,17 +143,15 @@ public class ProductServiceImpl implements ProductService {
         };
         Pageable pageable = PageRequest.of(page, size);
         Page<Product> products = productRespository.findAll(specification, pageable);
-        //ini digunakan untuk menyimpan response product yang baru
         List<ProductResponse> productResponses = new ArrayList<>();
         for (Product product : products.getContent()) {
-            //digunakan untuk mengiterasi data product yang disimpan dalam objek
             Optional<ProductPrice> productPrice = product.getProductPrices()
                     .stream()
-                    .filter(ProductPrice::isActive).findFirst();//optional ini untk mencari harga yang aktif
-            if (productPrice.isEmpty())//kondisi ini digunakan untuk memerika pakah productPricenya kosong atau tidak, jika tidak maka di skip
+                    .filter(ProductPrice::isActive).findFirst();
+            if (productPrice.isEmpty())
                 continue;
 
-            Vendor vendor = productPrice.get().getVendor();//ini digunakan untuk jika harga product yang aktif ditemukan distore
+            Vendor vendor = productPrice.get().getVendor();
             productResponses.add(toProductResponse(product, productPrice.get(), vendor));
         }
         return new PageImpl<>(productResponses, pageable, products.getTotalElements());
@@ -163,57 +159,95 @@ public class ProductServiceImpl implements ProductService {
 
     @Transactional(rollbackOn = Exception.class)
     @Override
-    public ProductResponse updateProductPrice(String productId, ProductRequest productRequest) {
+    public ProductResponse updateProduct(String productId, ProductRequest productRequest) {
         if (!isUpdateNeeded(productId, productRequest)) {
             return null;
         }
         deactivatePreviousActivePrices(productId, productRequest.getVendorId().getId());
         VendorResponse vendorResponse = vendorService.getById(productRequest.getVendorId().getId());
-        return createOrUpdateProduct(productRequest, vendorResponse);
-    }
+        Category category = Category.builder()
+                .name(productRequest.getCategory())
+                .build();
+        category = categoryService.getOrSave(category);
 
-    @Override
-    public boolean getByNameAndCategory(String productName, String productCategory) {
-        Optional<Product> product = productRespository.findByNameAndCategory_Name(productName, productCategory);
-        return product.isPresent();
-    }
+            Product product = Product.builder()
+                    .id(productId)
+                    .name(productRequest.getProductName())
+                    .category(category)
+                    .build();
 
-    private void deactivatePreviousActivePrices(String productId, String vendorId) {
-        productPriceRepository.findByProduct_IdAndVendorIdAndIsActive(productId, vendorId, true)
-                .ifPresent(previousPrice -> {
-                    previousPrice.setActive(false);
-                    productPriceRepository.saveAndFlush(previousPrice);
-                });
-    }
+            productRespository.saveAndFlush(product);
 
-    private boolean isUpdateNeeded(String productId, ProductRequest productRequest) {
-        Optional<Product> existingProduct = productRespository.findById(productId);
+        ProductPrice productPrice = ProductPrice.builder()
+                .price(productRequest.getPrice())
+                .stock(productRequest.getStock())
+                .isActive(true)
+                .product(product)
+                .vendor(Vendor.builder()
+                        .id(vendorResponse.getId())
+                        .build())
+                .build();
+        productPriceService.create(productPrice);
 
-        Optional<ProductPrice> existingActivePrice = productPriceRepository.findByProduct_IdAndVendorIdAndIsActive(productId, productRequest.getVendorId().getId(), true);
-
-        return existingProduct.isPresent() &&
-                existingActivePrice.isPresent() &&
-                (!existingProduct.get().getName().equals(productRequest.getProductName()) ||
-                        !existingActivePrice.get().getPrice().equals(productRequest.getPrice()) ||
-                        !existingActivePrice.get().getStock().equals(productRequest.getStock()));
-    }
-
-    private static ProductResponse toProductResponse
-            (Product product, ProductPrice productPrice, Vendor vendor) {
         return ProductResponse.builder()
                 .productId(product.getId())
                 .productName(product.getName())
                 .productCategory(product.getCategory().getName())
-                .stock(productPrice.getStock())
+                .stock(productRequest.getStock())
                 .price(productPrice.getPrice())
                 .stock(productPrice.getStock())
                 .vendor(VendorResponse.builder()
-                        .id(vendor.getId())
-                        .noSiup(vendor.getNoSiup())
-                        .vendorName(vendor.getName())
-                        .mobilPhone(vendor.getMobilePhone())
-                        .address(vendor.getAddress())
+                        .id(vendorResponse.getId())
+                        .noSiup(vendorResponse.getNoSiup())
+                        .vendorName(vendorResponse.getVendorName())
+                        .mobilPhone(vendorResponse.getMobilPhone())
+                        .address(vendorResponse.getAddress())
                         .build())
                 .build();
     }
+
+@Override
+public boolean getByNameAndCategory(String productName, String productCategory) {
+    Optional<Product> product = productRespository.findByNameAndCategory_Name(productName, productCategory);
+    return product.isPresent();
+}
+
+private void deactivatePreviousActivePrices(String productId, String vendorId) {
+    productPriceRepository.findByProduct_IdAndVendorIdAndIsActive(productId, vendorId, true)
+            .ifPresent(previousPrice -> {
+                previousPrice.setActive(false);
+                productPriceRepository.saveAndFlush(previousPrice);
+            });
+}
+
+private boolean isUpdateNeeded(String productId, ProductRequest productRequest) {
+    Optional<Product> existingProduct = productRespository.findById(productId);
+
+    Optional<ProductPrice> existingActivePrice = productPriceRepository.findByProduct_IdAndVendorIdAndIsActive(productId, productRequest.getVendorId().getId(), true);
+
+    return existingProduct.isPresent() &&
+            existingActivePrice.isPresent() &&
+            (!existingProduct.get().getName().equals(productRequest.getProductName()) ||
+                    !existingActivePrice.get().getPrice().equals(productRequest.getPrice()) ||
+                    !existingActivePrice.get().getStock().equals(productRequest.getStock()));
+}
+
+private static ProductResponse toProductResponse
+        (Product product, ProductPrice productPrice, Vendor vendor) {
+    return ProductResponse.builder()
+            .productId(product.getId())
+            .productName(product.getName())
+            .productCategory(product.getCategory().getName())
+            .stock(productPrice.getStock())
+            .price(productPrice.getPrice())
+            .stock(productPrice.getStock())
+            .vendor(VendorResponse.builder()
+                    .id(vendor.getId())
+                    .noSiup(vendor.getNoSiup())
+                    .vendorName(vendor.getName())
+                    .mobilPhone(vendor.getMobilePhone())
+                    .address(vendor.getAddress())
+                    .build())
+            .build();
+}
 }
