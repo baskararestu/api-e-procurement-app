@@ -92,4 +92,9 @@ public class ProductController {
                 .data(updatedProduct)
                 .build());
     }
+
+//    @GetMapping("/{id}")
+//    public ResponseEntity<?>getProductById(PathVariable String productId){
+//        return
+//    }
 }

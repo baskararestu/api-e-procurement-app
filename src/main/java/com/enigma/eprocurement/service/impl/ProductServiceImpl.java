@@ -85,46 +85,18 @@ public class ProductServiceImpl implements ProductService {
             throw new ProductAlreadyExistsException("Product with the same name and category already exists");
         }
 
-        return createOrUpdateProduct(productRequest, vendorResponse);
+        return createOrUpdateProduct(null,productRequest, vendorResponse);
     }
 
-    private ProductResponse createOrUpdateProduct(ProductRequest productRequest, VendorResponse vendorResponse) {
-        Category category = Category.builder()
-                .name(productRequest.getCategory())
-                .build();
-        category = categoryService.getOrSave(category);
-
-        Product product = Product.builder()
-                .id(productRequest.getProductId())
-                .name(productRequest.getProductName())
-                .category(category)
-                .build();
-        productRespository.saveAndFlush(product);
-        ProductPrice productPrice = ProductPrice.builder()
-                .price(productRequest.getPrice())
-                .stock(productRequest.getStock())
-                .isActive(true)
-                .product(product)
-                .vendor(Vendor.builder()
-                        .id(vendorResponse.getId())
-                        .build())
-                .build();
-        productPriceService.create(productPrice);
-        return ProductResponse.builder()
-                .productId(product.getId())
-                .productName(product.getName())
-                .productCategory(product.getCategory().getName())
-                .stock(productRequest.getStock())
-                .price(productPrice.getPrice())
-                .stock(productPrice.getStock())
-                .vendor(VendorResponse.builder()
-                        .id(vendorResponse.getId())
-                        .noSiup(vendorResponse.getNoSiup())
-                        .vendorName(vendorResponse.getVendorName())
-                        .mobilPhone(vendorResponse.getMobilPhone())
-                        .address(vendorResponse.getAddress())
-                        .build())
-                .build();
+    @Transactional(rollbackOn = Exception.class)
+    @Override
+    public ProductResponse updateProduct(String productId, ProductRequest productRequest) {
+        if (!isUpdateNeeded(productId, productRequest)) {
+            return null;
+        }
+        deactivatePreviousActivePrices(productId, productRequest.getVendorId().getId());
+        VendorResponse vendorResponse = vendorService.getById(productRequest.getVendorId().getId());
+        return createOrUpdateProduct(productId, productRequest, vendorResponse);
     }
 
     @Override
@@ -157,26 +129,24 @@ public class ProductServiceImpl implements ProductService {
         return new PageImpl<>(productResponses, pageable, products.getTotalElements());
     }
 
-    @Transactional(rollbackOn = Exception.class)
     @Override
-    public ProductResponse updateProduct(String productId, ProductRequest productRequest) {
-        if (!isUpdateNeeded(productId, productRequest)) {
-            return null;
-        }
-        deactivatePreviousActivePrices(productId, productRequest.getVendorId().getId());
-        VendorResponse vendorResponse = vendorService.getById(productRequest.getVendorId().getId());
+    public boolean getByNameAndCategory(String productName, String productCategory) {
+        Optional<Product> product = productRespository.findByNameAndCategory_Name(productName, productCategory);
+        return product.isPresent();
+    }
+
+    private ProductResponse createOrUpdateProduct(String productId, ProductRequest productRequest, VendorResponse vendorResponse) {
         Category category = Category.builder()
                 .name(productRequest.getCategory())
                 .build();
         category = categoryService.getOrSave(category);
 
-            Product product = Product.builder()
-                    .id(productId)
-                    .name(productRequest.getProductName())
-                    .category(category)
-                    .build();
-
-            productRespository.saveAndFlush(product);
+        Product product = Product.builder()
+                .id(productId)
+                .name(productRequest.getProductName())
+                .category(category)
+                .build();
+        productRespository.saveAndFlush(product);
 
         ProductPrice productPrice = ProductPrice.builder()
                 .price(productRequest.getPrice())
@@ -206,48 +176,41 @@ public class ProductServiceImpl implements ProductService {
                 .build();
     }
 
-@Override
-public boolean getByNameAndCategory(String productName, String productCategory) {
-    Optional<Product> product = productRespository.findByNameAndCategory_Name(productName, productCategory);
-    return product.isPresent();
-}
+    private void deactivatePreviousActivePrices(String productId, String vendorId) {
+        productPriceRepository.findByProduct_IdAndVendorIdAndIsActive(productId, vendorId, true)
+                .ifPresent(previousPrice -> {
+                    previousPrice.setActive(false);
+                    productPriceRepository.saveAndFlush(previousPrice);
+                });
+    }
 
-private void deactivatePreviousActivePrices(String productId, String vendorId) {
-    productPriceRepository.findByProduct_IdAndVendorIdAndIsActive(productId, vendorId, true)
-            .ifPresent(previousPrice -> {
-                previousPrice.setActive(false);
-                productPriceRepository.saveAndFlush(previousPrice);
-            });
-}
+    private boolean isUpdateNeeded(String productId, ProductRequest productRequest) {
+        Optional<Product> existingProduct = productRespository.findById(productId);
 
-private boolean isUpdateNeeded(String productId, ProductRequest productRequest) {
-    Optional<Product> existingProduct = productRespository.findById(productId);
+        Optional<ProductPrice> existingActivePrice = productPriceRepository.findByProduct_IdAndVendorIdAndIsActive(productId, productRequest.getVendorId().getId(), true);
 
-    Optional<ProductPrice> existingActivePrice = productPriceRepository.findByProduct_IdAndVendorIdAndIsActive(productId, productRequest.getVendorId().getId(), true);
+        return existingProduct.isPresent() &&
+                existingActivePrice.isPresent() &&
+                (!existingProduct.get().getName().equals(productRequest.getProductName()) ||
+                        !existingActivePrice.get().getPrice().equals(productRequest.getPrice()) ||
+                        !existingActivePrice.get().getStock().equals(productRequest.getStock()));
+    }
 
-    return existingProduct.isPresent() &&
-            existingActivePrice.isPresent() &&
-            (!existingProduct.get().getName().equals(productRequest.getProductName()) ||
-                    !existingActivePrice.get().getPrice().equals(productRequest.getPrice()) ||
-                    !existingActivePrice.get().getStock().equals(productRequest.getStock()));
-}
-
-private static ProductResponse toProductResponse
-        (Product product, ProductPrice productPrice, Vendor vendor) {
-    return ProductResponse.builder()
-            .productId(product.getId())
-            .productName(product.getName())
-            .productCategory(product.getCategory().getName())
-            .stock(productPrice.getStock())
-            .price(productPrice.getPrice())
-            .stock(productPrice.getStock())
-            .vendor(VendorResponse.builder()
-                    .id(vendor.getId())
-                    .noSiup(vendor.getNoSiup())
-                    .vendorName(vendor.getName())
-                    .mobilPhone(vendor.getMobilePhone())
-                    .address(vendor.getAddress())
-                    .build())
-            .build();
-}
+    private static ProductResponse toProductResponse
+            (Product product, ProductPrice productPrice, Vendor vendor) {
+        return ProductResponse.builder()
+                .productId(product.getId())
+                .productName(product.getName())
+                .productCategory(product.getCategory().getName())
+                .price(productPrice.getPrice())
+                .stock(productPrice.getStock())
+                .vendor(VendorResponse.builder()
+                        .id(vendor.getId())
+                        .noSiup(vendor.getNoSiup())
+                        .vendorName(vendor.getName())
+                        .mobilPhone(vendor.getMobilePhone())
+                        .address(vendor.getAddress())
+                        .build())
+                .build();
+    }
 }
