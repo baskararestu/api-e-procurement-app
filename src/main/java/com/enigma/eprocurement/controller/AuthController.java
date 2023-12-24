@@ -4,6 +4,7 @@ import com.enigma.eprocurement.constant.AppPath;
 import com.enigma.eprocurement.dto.request.AuthRequest;
 import com.enigma.eprocurement.dto.request.AuthVendorRequest;
 import com.enigma.eprocurement.dto.response.CommonResponse;
+import com.enigma.eprocurement.dto.response.DefaultResponse;
 import com.enigma.eprocurement.dto.response.LoginResponse;
 import com.enigma.eprocurement.dto.response.RegisterResponse;
 import com.enigma.eprocurement.service.AuthService;
@@ -26,7 +27,7 @@ public class AuthController {
     public ResponseEntity createAdminAccount(@RequestBody AuthRequest authRequest) {
         RegisterResponse registerResponse = authService.registerAdmin(authRequest);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(CommonResponse.builder()
+                .body(DefaultResponse.builder()
                         .statusCode(HttpStatus.CREATED.value())
                         .message("Successfully create admin account")
                         .data(registerResponse)
@@ -37,7 +38,7 @@ public class AuthController {
     public ResponseEntity loginUser(@RequestBody AuthRequest authRequest) {
         LoginResponse loginResponse = authService.login(authRequest);
         return ResponseEntity.status(HttpStatus.OK)
-                .body(CommonResponse.builder()
+                .body(DefaultResponse.builder()
                         .statusCode(HttpStatus.OK.value())
                         .message("Successfully login into app")
                         .data(loginResponse)
@@ -49,7 +50,7 @@ public class AuthController {
     public ResponseEntity createVendorAccount(@RequestBody AuthRequest authRequest) {
         RegisterResponse registerResponse = authService.registerVendor(authRequest);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(CommonResponse.builder()
+                .body(DefaultResponse.builder()
                         .statusCode(HttpStatus.CREATED.value())
                         .message("Successfully create vendor account")
                         .data(registerResponse)

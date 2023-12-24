@@ -5,6 +5,7 @@ import com.enigma.eprocurement.dto.request.AuthRequest;
 import com.enigma.eprocurement.dto.response.LoginResponse;
 import com.enigma.eprocurement.dto.response.RegisterResponse;
 import com.enigma.eprocurement.entity.*;
+import com.enigma.eprocurement.mapper.AuthMapper;
 import com.enigma.eprocurement.repository.UserCredentialRepository;
 import com.enigma.eprocurement.security.JwtUtil;
 import com.enigma.eprocurement.service.AdminService;
@@ -35,11 +36,10 @@ public class AuthServiceImpl implements AuthService {
     private final ValidationUtil validationUtil;
     private final AuthenticationManager authenticationManager;
 
-
     @Override
     public LoginResponse login(AuthRequest authRequest) {
-        //tempat untuk logic login
         validationUtil.validate(authRequest);
+
         Authentication authentication = authenticationManager
                 .authenticate(new UsernamePasswordAuthenticationToken(
                         authRequest.getUsername().toLowerCase(),
@@ -47,45 +47,26 @@ public class AuthServiceImpl implements AuthService {
                 ));
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        //object AppUser
         AppUser appUser = (AppUser) authentication.getPrincipal();
         String token = jwtUtil.generateToken(appUser);
-        return LoginResponse.builder()
-                .username(authRequest.getUsername())
-                .token(token)
-                .role(appUser.getRole().name())
-                .build();
+
+        return AuthMapper.getLoginResponse(authRequest, token, appUser);
     }
 
     @Transactional(rollbackOn = Exception.class)
     @Override
     public RegisterResponse registerAdmin(AuthRequest authRequest) {
         try {
-            //TODO 1: set role
-            Role role = Role.builder()
-                    .roleName(ERole.ROLE_ADMIN)
-                    .build();
+            Role role = AuthMapper.getRole(ERole.ROLE_ADMIN);
             role = roleService.getOrSave(role);
-            //TODO 2: set credential
-            UserCredential userCredential = UserCredential.builder()
-                    .username(authRequest.getUsername())
-                    .password(passwordEncoder.encode(authRequest.getPassword()))
-                    .role(role)
-                    .build();
+
+            UserCredential userCredential = AuthMapper.getUserCredential(authRequest, role, passwordEncoder);
             userCredentialRepository.saveAndFlush(userCredential);
-            //TODO 3: set admin
-            Admin admin = Admin.builder()
-                    .userCredential(userCredential)
-                    .name(authRequest.getName())
-                    .email(authRequest.getEmail())
-                    .phoneNumber(authRequest.getMobilePhone())
-                    .build();
+
+            Admin admin = AuthMapper.getAdmin(authRequest, userCredential);
             adminService.create(admin);
-            return RegisterResponse.builder()
-                    .username(userCredential.getUsername())
-                    .name(authRequest.getName())
-                    .role(userCredential.getRole().getRoleName().toString())
-                    .build();
+
+            return AuthMapper.getRegisterResponse(authRequest, userCredential);
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "user admin already exist");
         }
@@ -95,29 +76,17 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public RegisterResponse registerVendor(AuthRequest authRequest) {
         try {
-            Role role = Role.builder()
-                    .roleName(ERole.ROLE_VENDOR)
-                    .build();
+            Role role = AuthMapper.getRole(ERole.ROLE_VENDOR);
             role = roleService.getOrSave(role);
-            UserCredential userCredential = UserCredential.builder()
-                    .username(authRequest.getUsername())
-                    .password(passwordEncoder.encode(authRequest.getPassword()))
-                    .role(role)
-                    .build();
+
+            UserCredential userCredential =
+                    AuthMapper.getUserCredential(authRequest, role, passwordEncoder);
             userCredentialRepository.saveAndFlush(userCredential);
-            Vendor vendor = Vendor.builder()
-                    .userCredential(userCredential)
-                    .noSiup(authRequest.getNoSiup())
-                    .name(authRequest.getName())
-                    .address(authRequest.getAddress())
-                    .mobilePhone(authRequest.getMobilePhone())
-                    .build();
+
+            Vendor vendor = AuthMapper.getVendor(authRequest, userCredential);
             vendorService.create(vendor);
-            return RegisterResponse.builder()
-                    .username(userCredential.getUsername())
-                    .name(authRequest.getName())
-                    .role(userCredential.getRole().getRoleName().toString())
-                    .build();
+
+            return AuthMapper.getRegisterResponse(authRequest, userCredential);
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Vendor already exist");
         }
