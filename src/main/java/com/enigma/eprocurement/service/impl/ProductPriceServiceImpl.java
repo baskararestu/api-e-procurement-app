@@ -29,4 +29,9 @@ public class ProductPriceServiceImpl implements ProductPriceService {
                 .orElseThrow(()-> new ResponseStatusException(HttpStatus.NOT_FOUND,
                 "product not found"));
     }
+
+    @Override
+    public ProductPrice getByPrice(Long price) {
+        return null;
+    }
 }

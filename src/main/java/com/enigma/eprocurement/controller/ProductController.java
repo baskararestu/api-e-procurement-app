@@ -2,7 +2,6 @@ package com.enigma.eprocurement.controller;
 
 import com.enigma.eprocurement.constant.AppPath;
 import com.enigma.eprocurement.dto.request.ProductRequest;
-import com.enigma.eprocurement.dto.response.CommonResponse;
 import com.enigma.eprocurement.dto.response.DefaultResponse;
 import com.enigma.eprocurement.dto.response.PagingResponse;
 import com.enigma.eprocurement.dto.response.ProductResponse;
@@ -17,36 +16,39 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import static com.enigma.eprocurement.mapper.ResponseControllerMapper.*;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping(AppPath.PRODUCT)
 public class ProductController {
     private final ProductService productService;
+    private String message;
 
     @PostMapping
     @PreAuthorize("hasRole('ROLE_VENDOR')")
     public ResponseEntity<?> createProduct(@RequestBody ProductRequest productRequest) {
         try {
             ProductResponse productResponse = productService.createProductCategoryAndProductPrice(productRequest);
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(DefaultResponse.builder()
-                            .statusCode(HttpStatus.CREATED.value())
-                            .message("Successfully created new product")
-                            .data(productResponse)
-                            .build());
+            message = "Successfully created new product";
+            return getResponseEntity(message, HttpStatus.CREATED, productResponse);
         } catch (ProductAlreadyExistsException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(DefaultResponse.builder()
-                            .statusCode(HttpStatus.CONFLICT.value())
-                            .message("Product with the same name and category already exists")
-                            .data(null)
-                            .build());
+            message = "Product with the same name and category already exists";
+            return getResponseEntity(message, HttpStatus.CONFLICT, null);
+        } catch (Exception e) {
+            return getResponseEntity(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR, null);
         }
     }
 
     @GetMapping
-    public List<ProductResponse> getAllProduct() {
-        return productService.getAll();
+    public ResponseEntity<?> getAllProduct() {
+        try {
+            message = "Successfully getting data";
+            List<ProductResponse> productResponses = productService.getAll();
+            return getResponseEntity(message, HttpStatus.OK, productResponses);
+        } catch (Exception e) {
+            return getResponseEntity(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR, null);
+        }
     }
 
     @GetMapping("/page")
@@ -56,19 +58,14 @@ public class ProductController {
             @RequestParam(name = "page", required = false, defaultValue = "0") Integer page,
             @RequestParam(name = "size", required = false, defaultValue = "5") Integer size
     ) {
-        Page<ProductResponse> productResponses = productService.getAllByNameOrPrice(name, maxPrice, page, size);
-        PagingResponse pagingResponse = PagingResponse.builder()
-                .currentPage(page)
-                .totalPage(productResponses.getTotalPages())
-                .size(size)
-                .build();
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(CommonResponse.builder()
-                        .statusCode(HttpStatus.OK.value())
-                        .message("Successfully getting data")
-                        .data(productResponses.getContent())
-                        .pagingResponse(pagingResponse)
-                        .build());
+        try {
+            Page<ProductResponse> productResponses = productService.getAllByNameOrPrice(name, maxPrice, page, size);
+            message = "Successfully getting data";
+            PagingResponse pagingResponse = getPagingResponse(page, size, productResponses);
+            return getResponseEntityPaging(message, HttpStatus.OK, productResponses.getContent(), pagingResponse);
+        } catch (Exception e) {
+            return getResponseEntity(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR, null);
+        }
     }
 
     @PutMapping("/{productId}")
@@ -77,24 +74,26 @@ public class ProductController {
             @PathVariable String productId,
             @RequestBody ProductRequest productRequest
     ) {
-        ProductResponse updatedProduct = productService.updateProduct(productId, productRequest);
-        if (updatedProduct == null) {
-            return ResponseEntity.status(HttpStatus.OK)
-                    .body(DefaultResponse.builder()
-                            .statusCode(HttpStatus.OK.value())
-                            .message("No changes in the update request")
-                            .data(null)
-                            .build());
+        try {
+            ProductResponse updatedProduct = productService.updateProduct(productId, productRequest);
+            if (updatedProduct == null) {
+                message = "No changes in the update request";
+                return getResponseEntity(message, HttpStatus.OK, null);
+            }
+            message = "Product price updated successfully";
+            return getResponseEntity(message, HttpStatus.OK, updatedProduct);
+        } catch (Exception e) {
+            return getResponseEntity(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR, null);
         }
-        return ResponseEntity.ok(DefaultResponse.builder()
-                .statusCode(HttpStatus.OK.value())
-                .message("Product price updated successfully")
-                .data(updatedProduct)
-                .build());
     }
 
-//    @GetMapping("/{id}")
-//    public ResponseEntity<?>getProductById(PathVariable String productId){
-//        return
-//    }
+    @GetMapping("/{productId}")
+    public ResponseEntity<?> getProductById(@PathVariable String productId) {
+        try {
+            message = "Successfully getting data";
+            return getResponseEntity(message, HttpStatus.OK, productService.getById(productId));
+        }catch (Exception e){
+            return getResponseEntity(e.getMessage(),HttpStatus.INTERNAL_SERVER_ERROR,null);
+        }
+    }
 }

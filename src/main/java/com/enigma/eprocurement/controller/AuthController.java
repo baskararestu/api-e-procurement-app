@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import static com.enigma.eprocurement.mapper.ResponseEntityMapper.getResponseEntity;
+import static com.enigma.eprocurement.mapper.ResponseControllerMapper.getResponseEntity;
 
 @RestController
 @RequiredArgsConstructor

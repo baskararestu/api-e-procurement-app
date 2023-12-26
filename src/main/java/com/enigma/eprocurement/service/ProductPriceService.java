@@ -6,5 +6,6 @@ public interface ProductPriceService {
     ProductPrice create(ProductPrice productPrice);
 
     ProductPrice getById(String id);
+    ProductPrice getByPrice(Long price);
     ProductPrice findProductPriceIsActive(String productId,String vendorId, Boolean isActive);
 }
