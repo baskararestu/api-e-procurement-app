@@ -26,19 +26,16 @@ public class OrderServiceImpl implements OrderService {
     @Transactional(rollbackOn = Exception.class)
     @Override
     public OrderResponse createNewOrder(OrderRequest orderRequest) {
-        //TODO 1 : validate customer
         AdminResponse adminResponse = adminService.getById(orderRequest.getAdminId());
 
-        //TODO 2 : Convert orderDetailRequest to OrderDetail
         List<OrderDetail> orderDetails = orderRequest.getOrderDetails().stream().map(orderDetailRequest -> {
-            //TODO 3 : validate Product Price
             ProductPrice productPrice = productPriceService.getById(orderDetailRequest.getProductPriceId());
             return OrderDetail.builder()
                     .productPrice(productPrice)
                     .quantity(orderDetailRequest.getQuantity())
                     .build();
         }).toList();
-        //TODO 4 : Create new order
+
         Order order = Order.builder()
                 .admin(Admin.builder()
                         .id(adminResponse.getId())
@@ -49,23 +46,21 @@ public class OrderServiceImpl implements OrderService {
         orderRepository.saveAndFlush(order);
 
         List<OrderDetailResponse> orderDetailResponses = order.getOrderDetails().stream().map(orderDetail -> {
-            //TODO 5 : Set order from orderDetail after creating new order
+
             orderDetail.setOrder(order);
             System.out.println(order);
-            //TODO 6 : change the stock from the purchase quantity
+
             ProductPrice currentProductPrice = orderDetail.getProductPrice();
             currentProductPrice.setStock(currentProductPrice.getStock() - orderDetail.getQuantity());
             return OrderDetailResponse.builder()
                     .orderDetailId(orderDetail.getId())
                     .quantity(orderDetail.getQuantity())
-                    //TODO 7 : Convert product to productResponse(productPrice)
                     .product(ProductResponse.builder()
                             .productId(currentProductPrice.getProduct().getId())
                             .productName(currentProductPrice.getProduct().getName())
                             .productCategory(currentProductPrice.getProduct().getCategory().getName())
                             .stock(currentProductPrice.getStock())
                             .price(currentProductPrice.getPrice())
-                            //TODO 8 : convert store to storeResponse(productPrice)
                             .vendor(VendorResponse.builder()
                                     .id(currentProductPrice.getVendor().getId())
                                     .vendorName(currentProductPrice.getVendor().getName())
@@ -77,7 +72,6 @@ public class OrderServiceImpl implements OrderService {
                     .build();
         }).toList();
 
-        //TODO 9 : RETURN OrderResponse
         return OrderResponse.builder()
                 .orderId(order.getId())
                 .transDate(order.getTransDate())
